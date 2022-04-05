@@ -1,0 +1,46 @@
+#!/bin/sh
+rm /var/run/nginx.pid
+set -e
+
+ln -sf "/usr/share/zoneinfo/${TZ}" /etc/localtime
+sed -i "s/client_max_body_size .*/client_max_body_size ${MAX_FILESIZE};/g" /etc/nginx/nginx.conf
+sed -i "s/^post_max_size =.*/post_max_size = ${POST_MAX_SIZE}/g" /etc/php/7.0/fpm/php.ini
+sed -i "s/^upload_max_filesize =.*/upload_max_filesize = ${MAX_FILESIZE}/g" /etc/php/7.0/fpm/php.ini
+sed -i "s/^display_errors =.*/display_errors = ${DISPLAY_ERRORS}/g" /etc/php/7.0/fpm/php.ini
+
+if [ ! -f /config/config.php ]; then
+    cp /install/config.php /config/config.php
+fi
+cp /config/config.php /srv/myimouto/config/config.php
+cp /srv/myimouto/config/database.yml.example /srv/myimouto/config/database.yml
+
+sed -i "s/host: .*/host: ${MYSQL_SERVER}\n  port: ${MYSQL_PORT}/" /srv/myimouto/config/database.yml
+sed -i "s/database: .*/database: ${MYSQL_DATABASE}/" /srv/myimouto/config/database.yml
+sed -i "s/username: .*/username: ${MYSQL_USERNAME}/" /srv/myimouto/config/database.yml
+sed -i "s/password: .*/password: ${MYSQL_PASSWORD}/" /srv/myimouto/config/database.yml
+sed -i "s/<APP_NAME>/${APP_NAME}/" /srv/myimouto/config/config.php
+sed -i "s/<SERVER_HOST>/${SERVER_HOST}/" /srv/myimouto/config/config.php
+sed -i "s|<URL_BASE>|${URL_BASE}|" /srv/myimouto/config/config.php
+
+if [ -z "`ls /srv/myimouto/public/data/`" ]; then
+    echo "CREATE DATABASE ${MYSQL_DATABASE} COLLATE utf8_general_ci;" | mysql -h ${MYSQL_SERVER} -P ${MYSQL_PORT} -u ${MYSQL_USERNAME} -p${MYSQL_PASSWORD}
+
+    cp /install/install.php /srv/myimouto/
+    cd /srv/myimouto
+    sed -i '31,34 s/^/#/' install.php
+    sed -i '35 s/.*/list(\$adminName, \$adminPass) = array(getenv("ADMIN_USERNAME"), getenv("ADMIN_PASSWORD"));/' install.php
+    sed -i '101 s/^/#/' install.php
+    php install.php
+    chown -R www-data.www-data /srv/myimouto/public/data/
+    chown -R www-data.www-data /srv/myimouto/log/
+    chown -R www-data.www-data /srv/myimouto/tmp/
+    rm /srv/myimouto/install.php
+fi
+
+
+/etc/init.d/php7.0-fpm restart
+
+cd /srv/myimouto
+php set-admin-pass.php
+
+exec /usr/sbin/nginx -g 'daemon off;'

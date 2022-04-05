@@ -1,0 +1,17 @@
+server {
+        listen 3000;
+
+        root /srv/myimouto/public;
+        index index.php index.html index.htm index.nginx-debian.html;
+
+        rewrite "^/(?:data/)?(preview|sample|jpeg|image)/([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{28})(?:/.*?)?(\.[\w]+)$" /data/$1/$2/$3/$2$3$4$5 last;
+
+        location / {
+                try_files $uri /index.php$is_args$query_string;
+        }
+
+        location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+                fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+        }
+}
