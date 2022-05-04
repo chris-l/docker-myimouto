@@ -24,6 +24,7 @@ RUN apt-get update && \
     imagemagick \
     mysql-client-5.7 \
     nginx \
+    patch \
     php-curl \
     php-fpm \
     php-imagick \
@@ -46,7 +47,9 @@ RUN mkdir /install
 RUN mv /srv/myimouto/install.php /install/
 COPY config.php /install/
 COPY set-admin-pass.php /srv/myimouto/
+COPY remove-rename.diff /srv/myimouto/
 WORKDIR /srv/myimouto
+RUN patch -p0 -i remove-rename.diff
 RUN composer install
 RUN mkdir -p /srv/myimouto/public/data/
 RUN mkdir -p /srv/myimouto/log
@@ -62,7 +65,7 @@ RUN mkdir -p /run/php/
 RUN update-rc.d php7.0-fpm defaults
 COPY run-httpd /usr/local/bin/
 RUN chmod 755 /usr/local/bin/run-httpd
-RUN apt-get -y remove git && apt -y autoremove
+RUN apt-get -y remove git patch && apt -y autoremove
 RUN apt-get -y clean
 
 VOLUME /srv/myimouto/public/data /config

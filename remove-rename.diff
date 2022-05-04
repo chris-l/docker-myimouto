@@ -1,0 +1,138 @@
+diff --git app/models/InlineImage.php app/models/InlineImage.php
+index 89d52b3..313442c 100755
+--- app/models/InlineImage.php
++++ app/models/InlineImage.php
+@@ -270,19 +270,22 @@ class InlineImage extends Rails\ActiveRecord\Base
+         if (!is_dir(dirname($this->file_path()))) {
+             mkdir(dirname($this->file_path()), 0777, true);
+         }
+-        rename($this->tempfile_image_path(), $this->file_path());
++        copy($this->tempfile_image_path(), $this->file_path());
++        unlink($this->tempfile_image_path());
+         
+         if (is_file($this->tempfile_preview_path())) {
+             if (!is_dir(dirname($this->preview_path()))) {
+                 mkdir(dirname($this->preview_path()), 0777, true);
+             }
+-            rename($this->tempfile_preview_path(), $this->preview_path());
++            copy($this->tempfile_preview_path(), $this->preview_path());
++            unlink($this->tempfile_preview_path());
+         }
+         if (is_file($this->tempfile_sample_path())) {
+             if (!is_dir(dirname($this->sample_path()))) {
+                 mkdir(dirname($this->sample_path()), 0777, true);
+             }
+-            rename($this->tempfile_sample_path(), $this->sample_path());
++            copy($this->tempfile_sample_path(), $this->sample_path());
++            unlink($this->tempfile_sample_path());
+         }
+         $this->file_needs_move = false;
+         return true;
+diff --git app/models/Post/FileMethods.php app/models/Post/FileMethods.php
+index 8f9d269..b344185 100755
+--- app/models/Post/FileMethods.php
++++ app/models/Post/FileMethods.php
+@@ -287,7 +287,8 @@ trait PostFileMethods
+             if (!is_dir($dest_dir)) {
+                 mkdir($dest_dir, 0775, true);
+             }
+-            rename($temp_path, $dest_path);
++            copy($temp_path, $dest_path);
++            unlink($temp_path);
+             chmod($dest_path, 0775);
+         }
+ 
+@@ -715,4 +716,4 @@ trait PostFileMethods
+             $this->source = $source;
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git app/models/Post/ImageStore/Base.php app/models/Post/ImageStore/Base.php
+index 1d718bd..a092dfc 100755
+--- app/models/Post/ImageStore/Base.php
++++ app/models/Post/ImageStore/Base.php
+@@ -57,28 +57,33 @@ abstract class Post_ImageStore_Base
+     {
+         $this->_create_dirs($this->file_path());
+         
+-        if ($this->_post->is_import)
+-            rename($this->_post->tempfile_path(), $this->file_path());
+-        else
++        if ($this->_post->is_import) {
++            copy($this->_post->tempfile_path(), $this->file_path());
++            unlink($this->_post->tempfile_path());
++        } else {
+             move_uploaded_file($this->_post->tempfile_path(), $this->file_path());
++        }
+         
+         // chmod($this->file_path(), 0777);
+ 
+         if ($this->_post->image()) {
+             $this->_create_dirs($this->preview_path());
+-            rename($this->_post->tempfile_preview_path(), $this->preview_path());
++            copy($this->_post->tempfile_preview_path(), $this->preview_path());
++            unlink($this->_post->tempfile_preview_path());
+             // chmod($this->preview_path(), 0777);
+         }
+ 
+         if (file_exists($this->_post->tempfile_sample_path())) {
+             $this->_create_dirs($this->sample_path());
+-            rename($this->_post->tempfile_sample_path(), $this->sample_path());
++            copy($this->_post->tempfile_sample_path(), $this->sample_path());
++            unlink($this->_post->tempfile_sample_path());
+             // chmod($this->sample_path(), 0777);
+         }
+ 
+         if (file_exists($this->_post->tempfile_jpeg_path())) {
+             $this->_create_dirs($this->jpeg_path());
+-            rename($this->_post->tempfile_jpeg_path(), $this->jpeg_path());
++            copy($this->_post->tempfile_jpeg_path(), $this->jpeg_path());
++            unlink($this->_post->tempfile_jpeg_path());
+             // chmod($this->jpeg_path(), 0777);
+         }
+     }
+@@ -97,4 +102,4 @@ abstract class Post_ImageStore_Base
+             !is_dir($dir) && mkdir($dir);
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git app/models/User.php app/models/User.php
+index 5a480e1..b2ab7e0 100755
+--- app/models/User.php
++++ app/models/User.php
+@@ -578,7 +578,8 @@ class User extends Rails\ActiveRecord\Base
+             return false;
+         }
+         
+-        rename($tempfile_path, $this->avatar_path());
++        copy($tempfile_path, $this->avatar_path());
++        unlink($tempfile_path);
+         chmod($this->avatar_path(), 0775);
+         
+         $this->updateAttributes(array(
+diff --git lib/SimilarImages.php lib/SimilarImages.php
+index 091755f..a123acb 100755
+--- lib/SimilarImages.php
++++ lib/SimilarImages.php
+@@ -347,13 +347,15 @@ class SimilarImages
+ 
+             $tempfile_path_resize = $tempfile_path . ".2";
+             Moebooru\Resizer::resize($ext, $tempfile_path, $tempfile_path_resize, $size, 95);
+-            rename($tempfile_path_resize, $tempfile_path);
++            copy($tempfile_path_resize, $tempfile_path);
++            unlink($tempfile_path_resize);
+             
+             $md5 = md5_file($tempfile_path);
+             $id = $md5 . "." . $ext;
+             $file_path = self::search_cache_dir() . "/" . $id;
+ 
+-            rename($tempfile_path, $file_path);
++            copy($tempfile_path, $file_path);
++            unlink($tempfile_path);
+             
+             # Finally block
+             if (is_dir($tempfile_path))
