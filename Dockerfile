@@ -20,37 +20,46 @@ ENV DISPLAY_ERRORS="On"
 
 RUN apt-get update && \
   apt-get -y install \
-    git \
     imagemagick \
     mysql-client-5.7 \
     nginx \
-    patch \
     php-curl \
     php-fpm \
     php-imagick \
     php-mysql \
     php-xml \
-    unzip
+    unzip && \
+    apt -y autoremove && \
+    apt-get -y clean
 
 RUN sed -i "59 s/$/\n\tclient_max_body_size 50M;/" /etc/nginx/nginx.conf
 WORKDIR /root/
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-RUN php composer-setup.php
-RUN php -r "unlink('composer-setup.php');"
-RUN mv composer.phar /usr/local/bin/composer
 
 RUN mkdir -p /srv
 RUN mkdir -p /config
 WORKDIR /srv
-RUN git clone https://github.com/chris-l/myimouto.git --depth 1
+RUN apt-get -y install git && \
+    git clone https://github.com/chris-l/myimouto.git --depth 1 && \
+    apt-get -y remove git && \
+    apt -y autoremove && \
+    apt-get -y clean
 RUN mkdir /install
 RUN mv /srv/myimouto/install.php /install/
 COPY config.php /install/
 COPY set-admin-pass.php /srv/myimouto/
 COPY remove-rename.diff /srv/myimouto/
 WORKDIR /srv/myimouto
-RUN patch -p0 -i remove-rename.diff
-RUN composer install
+RUN apt-get -y install patch && \
+    patch -p0 -i remove-rename.diff && \
+    apt-get -y remove patch && \
+    apt -y autoremove && \
+    apt-get -y clean
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php composer-setup.php && \
+    php -r "unlink('composer-setup.php');" && \
+    mv composer.phar /usr/local/bin/composer && \
+    composer install && \
+    rm /usr/local/bin/composer
 RUN mkdir -p /srv/myimouto/public/data/
 RUN mkdir -p /srv/myimouto/log
 RUN mkdir -p /srv/myimouto/tmp
@@ -65,8 +74,6 @@ RUN mkdir -p /run/php/
 RUN update-rc.d php7.0-fpm defaults
 COPY run-httpd /usr/local/bin/
 RUN chmod 755 /usr/local/bin/run-httpd
-RUN apt-get -y remove git patch && apt -y autoremove
-RUN apt-get -y clean
 
 VOLUME /srv/myimouto/public/data /config
 EXPOSE 3000
